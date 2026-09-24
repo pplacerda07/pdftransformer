@@ -217,6 +217,7 @@ def _is_heading(line: Line, stats: Stats, opts: Options) -> int | None:
 
 
 def render_block(block: Block, stats: Stats, opts: Options) -> list[str]:
+    """Blocos que nao sao texto corrido: tabela e imagem."""
     if block.kind == "table":
         table = _table_md(block.rows or [])
         return [table] if table else []
@@ -226,17 +227,59 @@ def render_block(block: Block, stats: Stats, opts: Options) -> list[str]:
         alvo = f"assets/{block.path}"
         # caminho com espaco precisa dos sinais de menor/maior para o link valer
         return [f"![](<{alvo}>)" if " " in alvo else f"![]({alvo})"]
+    return _paragrafos([l for l in block.lines if not l.drop and l.text], stats, opts)
 
-    lines = [l for l in block.lines if not l.drop and l.text]
+
+def _passo_das_linhas(lines: list[Line]) -> float:
+    """Distancia tipica entre duas linhas seguidas do mesmo paragrafo."""
+    gaps = []
+    for a, b in zip(lines, lines[1:]):
+        g = b.bbox[1] - a.bbox[1]
+        if 1.0 < g < 80.0:
+            gaps.append(g)
+    if not gaps:
+        return 12.0
+    gaps.sort()
+    return gaps[len(gaps) // 2]          # mediana: nao se abala com saltos
+
+
+def _margens(lines: list[Line]) -> tuple[float, float]:
+    """Margens do CORPO do texto, nao da pagina.
+
+    Usar o menor x da pagina daria errado sempre que houver um cabecalho ou um
+    numero de pagina comecando antes da mancha de texto: todas as linhas do
+    corpo pareceriam recuadas. Por isso a margem esquerda e a posicao mais
+    repetida, e a direita e um percentil alto - robusto tambem em texto que
+    nao e justificado.
+    """
+    x0s: Counter = Counter()
+    for l in lines:
+        x0s[round(l.bbox[0] / 2) * 2] += 1
+    esquerda = float(x0s.most_common(1)[0][0])
+    xs = sorted(l.bbox[2] for l in lines)
+    direita = xs[min(len(xs) - 1, int(len(xs) * 0.85))]
+    return esquerda, max(direita, esquerda + 1.0)
+
+
+def _paragrafos(lines: list[Line], stats: Stats, opts: Options) -> list[str]:
+    """Junta linhas em paragrafos usando a geometria da pagina.
+
+    Muitos PDFs entregam cada linha como um bloco separado; se confiarmos nos
+    blocos, o texto sai com uma linha por paragrafo e as palavras cortadas por
+    hifen nunca se reencontram. Por isso a decisao e tomada aqui, olhando o
+    espacamento, o recuo e onde a linha termina.
+    """
     if not lines:
         return []
 
-    left_edge = min(l.bbox[0] for l in lines)
-    right_edge = max(l.bbox[2] for l in lines)
-    width = right_edge - left_edge
+    passo = _passo_das_linhas(lines)
+    esquerda, direita = _margens(lines)
+    largura = max(1.0, direita - esquerda)
+    limite_recuo = max(6.0, 0.022 * largura)
 
     out: list[str] = []
     buf = ""
+    anterior: Line | None = None
 
     def flush() -> None:
         nonlocal buf
@@ -246,33 +289,87 @@ def render_block(block: Block, stats: Stats, opts: Options) -> list[str]:
 
     for line in lines:
         text = line.text
+
         lvl = _is_heading(line, stats, opts)
         if lvl:
             flush()
             out.append("#" * lvl + " " + _line_md(line, opts, plain=True))
+            anterior = None
             continue
 
         md = _line_md(line, opts)
         if _LIST_RE.match(text):
             flush()
             m = _ORDERED_RE.match(text)
-            body = _LIST_RE.sub("", md, count=1)
-            out.append((f"{m.group(1)}. " if m else "- ") + body)
+            corpo = _LIST_RE.sub("", md, count=1)
+            out.append((f"{m.group(1)}. " if m else "- ") + corpo)
+            anterior = None
             continue
 
-        buf = _join(buf, md, opts)
+        if buf and anterior is not None:
+            salto = line.bbox[1] - anterior.bbox[1]
+            recuo = line.bbox[0] - esquerda
+            curta = (direita - anterior.bbox[2]) > 0.10 * largura
 
-        # fim de paragrafo: linha que termina antes da margem e com pontuacao
-        short = width > 0 and (right_edge - line.bbox[2]) > 0.12 * width
-        if short and text.rstrip().endswith(_END_PUNCT):
-            flush()
+            quebra = (
+                salto > passo * 1.6                      # espaco de paragrafo
+                or salto < 0                             # voltou para cima: outra coluna
+                or recuo > limite_recuo                  # linha com recuo: comeco novo
+                or abs(line.size - anterior.size) > 1.0  # mudou o tamanho da fonte
+                or (curta and anterior.text.rstrip().endswith(_END_PUNCT))
+            )
+            if quebra:
+                flush()
+
+        buf = _join(buf, md, opts)
+        anterior = line
 
     flush()
     return [o for o in out if o]
 
 
+def _mesma_faixa(a: tuple[float, float], b: tuple[float, float]) -> bool:
+    """Dois blocos dividem a mesma coluna de texto?"""
+    inicio = max(a[0], b[0])
+    fim = min(a[1], b[1])
+    sobra = fim - inicio
+    menor = max(1.0, min(a[1] - a[0], b[1] - b[0]))
+    return sobra / menor > 0.3
+
+
 def render_page(page: PageData, stats: Stats, opts: Options) -> str:
+    """Monta a pagina deixando os paragrafos atravessarem blocos vizinhos.
+
+    Blocos que estao na mesma faixa horizontal pertencem ao mesmo fluxo de
+    leitura e podem continuar o mesmo paragrafo. Quando a faixa muda - caso de
+    um texto em duas colunas - o paragrafo e fechado, para as frases de uma
+    coluna nao se misturarem com as da outra.
+    """
     chunks: list[str] = []
+    acumulado: list[Line] = []
+    faixa: tuple[float, float] | None = None
+
+    def despejar() -> None:
+        nonlocal faixa
+        if acumulado:
+            chunks.extend(_paragrafos(acumulado, stats, opts))
+            acumulado.clear()
+        faixa = None
+
     for block in page.blocks:
-        chunks.extend(render_block(block, stats, opts))
+        if block.kind != "text":
+            despejar()
+            chunks.extend(render_block(block, stats, opts))
+            continue
+
+        lines = [l for l in block.lines if not l.drop and l.text]
+        if not lines:
+            continue
+        atual = (min(l.bbox[0] for l in lines), max(l.bbox[2] for l in lines))
+        if faixa is not None and not _mesma_faixa(faixa, atual):
+            despejar()
+        acumulado.extend(lines)
+        faixa = atual
+
+    despejar()
     return "\n\n".join(chunks).strip()
