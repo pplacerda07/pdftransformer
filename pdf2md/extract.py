@@ -209,7 +209,10 @@ def _extract_images(page, images_dir: str) -> list[Block]:
             pix.save(path)
             rects = page.get_image_rects(xref)
             bbox = tuple(rects[0]) if rects else (0, page.rect.height, 0, page.rect.height)
-            out.append(Block(kind="image", bbox=bbox, path=name))
+            # o caminho guardado e o mesmo que vai para o link da nota, incluindo
+            # a subpasta do livro - sem ela a imagem nao aparece no Obsidian
+            sub = os.path.basename(images_dir.rstrip("/\\"))
+            out.append(Block(kind="image", bbox=bbox, path=f"{sub}/{name}"))
         except Exception:
             continue
     return out

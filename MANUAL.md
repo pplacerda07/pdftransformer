@@ -19,6 +19,7 @@ cada campo do arquivo gerado e cada mensagem que pode aparecer.
 8. [Usando no Obsidian e no Claude](#8-usando-no-obsidian-e-no-claude)
 9. [Mensagens e avisos: o que fazer](#9-mensagens-e-avisos-o-que-fazer)
 10. [Receitas para casos comuns](#10-receitas-para-casos-comuns)
+10b. [Perguntas frequentes](#10b-perguntas-frequentes)
 11. [Linha de comando](#11-linha-de-comando)
 12. [Instalação e arquivos do programa](#12-instalação-e-arquivos-do-programa)
 
@@ -161,8 +162,8 @@ num parágrafo só dele, no início da página:
 
 | Opção | O que escreve no arquivo |
 | --- | --- |
-| **Comentário + título de página** (padrão) | `<!-- page: 23 | pdf: 27 -->` e, na linha seguinte, `###### p. 23` |
-| **Somente comentário** | `<!-- page: 23 | pdf: 27 -->` |
+| **Comentário + título de página** (padrão) | `<!-- page: 23 \| pdf: 27 -->` e, na linha seguinte, `###### p. 23` |
+| **Somente comentário** | `<!-- page: 23 \| pdf: 27 -->` |
 | **Somente título** | `###### p. 23` |
 | **Marcador no meio do texto** | `**[p. 23]**` |
 | **Sem marcador de página** | Nada. A nota vira texto corrido, sem referência de página. |
@@ -175,7 +176,8 @@ Analisa o PDF **selecionado na lista** (ou o primeiro, se nenhum estiver selecio
 e abre uma janela com:
 
 - a **origem** da numeração — é a informação mais importante da janela;
-- a tabela `folha do PDF → página da publicação`.
+- a tabela `folha do PDF → página da publicação`, onde as folhas sem número
+  impresso aparecem como `(sem numeracao)`.
 
 Ele lê **até 60 folhas** e mostra **até 40 linhas** na tabela. A janela não trava o
 programa: você pode deixá-la aberta e mexer nas opções.
@@ -201,7 +203,10 @@ vault do Obsidian. O campo e o botão *Escolher pasta* só ficam ativos nesse ca
 > e grava ali. Um erro de digitação não dá mensagem de erro: ele produz uma pasta
 > nova num lugar inesperado. Prefira o botão *Escolher pasta*.
 
-Se já existir um `.md` com o mesmo nome, ele é **substituído**.
+**Quando já existe uma nota com aquele nome:** se ela veio do **mesmo PDF**, é
+substituída — é o que você espera ao reconverter para corrigir a numeração. Se veio
+de **outro PDF** (dois `cap1.pdf` em pastas diferentes, por exemplo), a nova é gravada
+como `cap1 (2).md` e o registro avisa. Nenhuma nota é apagada em silêncio.
 
 ### As onze caixas
 
@@ -289,7 +294,9 @@ Para PDFs escaneados. Veja [OCR](#ocr-em-páginas-sem-texto) na seção de mensa
 ## 6. O rodapé: progresso, registro e botões
 
 **A barra de progresso** anda **dentro do arquivo que está sendo convertido**, página
-por página. Para acompanhar o lote inteiro, olhe a coluna SITUAÇÃO da lista.
+por página. Para acompanhar o lote inteiro, olhe a coluna SITUAÇÃO da lista. Ela
+chega a 100% e o programa ainda leva um instante montando e gravando o arquivo — não
+é travamento.
 
 **O registro** mostra uma linha por arquivo. As cores:
 
@@ -297,6 +304,12 @@ por página. Para acompanhar o lote inteiro, olhe a coluna SITUAÇÃO da lista.
 - **laranja** — atenção: páginas sem texto, numeração duvidosa, PDF com senha;
 - **vermelho** — o arquivo não pôde ser lido;
 - **cinza** — mensagens do próprio programa ("3 arquivo(s) adicionado(s)").
+
+As linhas da lista também mudam de cor, com o mesmo significado.
+
+> **Importante num acervo grande:** o registro **não é salvo em lugar nenhum** — ele
+> some ao fechar o programa. Antes de fechar depois de converter centenas de
+> arquivos, olhe as linhas laranja e vermelhas e anote quais precisam de atenção.
 
 **Os botões:**
 
@@ -442,10 +455,14 @@ winget install -e --id UB-Mannheim.TesseractOCR
 .venv\Scripts\python.exe -m pip install pytesseract pillow
 ```
 
-Depois marque a caixa. Dois avisos honestos:
+Depois marque a caixa. Quatro avisos honestos:
 
-- o texto reconhecido sai como **um parágrafo corrido** por página, sem títulos nem
-  quebras de parágrafo — o OCR não devolve a posição das linhas;
+- o OCR só é acionado **nas páginas com menos de 25 caracteres de texto**, uma a uma.
+  Num livro meio escaneado, só as páginas-imagem passam por ele;
+- o texto reconhecido sai como **um parágrafo corrido** por página, sem títulos, sem
+  negrito e sem quebras de parágrafo — o OCR não devolve a posição das linhas;
+- o idioma é fixo em **português + inglês**. Livros em francês ou espanhol serão
+  reconhecidos com erros;
 - o OCR **não ajuda na numeração**: ele roda depois da leitura das margens, então um
   livro escaneado sempre cairá na folha do PDF. Use *Deslocamento manual* nesses
   casos.
@@ -476,6 +493,76 @@ Abra o `.md` e corrija a linha `title:` e o `# Título`. Veja o aviso na
 
 ---
 
+## 10b. Perguntas frequentes
+
+**Meus PDFs saem do computador? Vai alguma coisa para a internet?**
+Não. Tudo acontece na sua máquina. O programa não tem login, não envia nada e não usa
+inteligência artificial nenhuma para converter — a IA entra só depois, quando *você*
+usa as notas. Internet só é necessária na instalação.
+
+**Posso deixar 400 PDFs rodando à noite e usar o computador?**
+Pode. Ele converte um por vez, em segundo plano. Só não feche a janela: fechar
+durante a conversão interrompe tudo (os já concluídos ficam salvos). Não existe pausa,
+só *Cancelar*. E lembre que o registro some ao fechar — veja o aviso na
+[seção 6](#6-o-rodapé-progresso-registro-e-botões).
+
+**Converte Word, EPUB ou foto de página?**
+Não, só PDF. Fotos de páginas precisam virar PDF antes, e ainda assim exigem OCR.
+
+**Dá para converter só as páginas 120 a 160?**
+Não. Ele sempre converte o PDF inteiro. Para um recorte, extraia essas páginas no seu
+leitor de PDF e converta o arquivo menor — nesse caso use *Deslocamento manual* para
+que a numeração continue a do livro (folha 1 = página 120 → deslocamento **+119**).
+
+**Se eu reconverter um PDF, perco as anotações que fiz na nota do Obsidian?**
+Sim. A nota é reescrita do zero. Se você anota dentro das notas de fonte, crie uma
+nota separada para os seus comentários e use links para as páginas — assim reconverter
+nunca destrói o seu trabalho.
+
+**O programa guarda as minhas escolhas?**
+Não. Cada vez que você abre, tudo volta ao padrão: modo de numeração, deslocamento,
+marcador, pasta de saída e as caixas. Para uma configuração fixa, use a
+[linha de comando](#11-linha-de-comando).
+
+**As imagens não aparecem na nota do Obsidian.**
+Elas ficam em `markdown/assets/<nome do livro>/`. Se você mover o `.md` para outro
+lugar, mova a pasta `assets` junto — o link é relativo à pasta da nota.
+
+**Como sei se um PDF é escaneado antes de perder tempo?**
+Tente selecionar o texto no seu leitor de PDF. Se não der, é imagem. O programa também
+avisa: a nota sai com *"(pagina sem texto extraivel)"* e o registro mostra a linha
+laranja dizendo quantas páginas ficaram assim.
+
+**A conferência bateu no começo mas errou no meio do livro.**
+A conferência lê só as 60 primeiras folhas. Num livro que reinicia a numeração por
+parte, ou com anexos numerados à parte, o programa acompanha mudanças de numeração,
+mas só quando há números impressos suficientes. Confira também uma folha do meio e
+uma do fim abrindo o `.md` gerado.
+
+**Os `###### p. 23` poluem minha leitura.**
+Troque o marcador para *Somente comentário*: o comentário não aparece na leitura do
+Obsidian, e a IA continua enxergando a página. Você perde o link direto
+`[[nota#p. 23]]`.
+
+**Um livro de 600 páginas virou um `.md` gigante. Tudo bem?**
+Para o Obsidian, sim. Para dar de contexto ao Claude, prefira mandar o trecho que
+interessa, ou marque *Também uma nota por página* nas obras que você consulta por
+página.
+
+**Como ficam as notas de rodapé?**
+Os numerinhos de chamada entram grudados na palavra (`formativa12`) e o texto da nota
+de rodapé aparece como um parágrafo comum no fim da página. O programa não separa
+notas de rodapé.
+
+**Posso apagar a pasta `markdown` e converter tudo de novo?**
+Pode, sem medo. Ela é só resultado; o PDF original nunca é tocado.
+
+**O Windows avisa ao abrir um `.bat`. É seguro?**
+Esses três arquivos são texto simples, você pode abrir no Bloco de Notas e ler o que
+eles fazem. O aviso aparece porque o arquivo veio de fora do computador.
+
+---
+
 ## 11. Linha de comando
 
 Para lotes grandes ou para repetir sempre a mesma configuração:
@@ -494,6 +581,10 @@ Para lotes grandes ou para repetir sempre a mesma configuração:
 | `--por-pagina` | Gera também uma nota por página. |
 | `--imagens` | Extrai as imagens. |
 | `--ocr` | Liga o OCR. |
+
+As opcoes de limpeza do texto (detectar titulos, remover cabecalho/rodape, juntar
+hifen, negrito, tabelas, duas colunas e a nota de contexto) **nao existem como
+parametros** — na linha de comando elas ficam sempre ligadas.
 
 Aceita arquivos e pastas misturados na mesma chamada. Você também pode arrastar um
 PDF ou uma pasta para cima do **`converter.bat`**.

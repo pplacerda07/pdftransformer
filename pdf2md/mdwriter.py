@@ -221,7 +221,11 @@ def render_block(block: Block, stats: Stats, opts: Options) -> list[str]:
         table = _table_md(block.rows or [])
         return [table] if table else []
     if block.kind == "image":
-        return [f"![](assets/{block.path})"] if block.path else []
+        if not block.path:
+            return []
+        alvo = f"assets/{block.path}"
+        # caminho com espaco precisa dos sinais de menor/maior para o link valer
+        return [f"![](<{alvo}>)" if " " in alvo else f"![]({alvo})"]
 
     lines = [l for l in block.lines if not l.drop and l.text]
     if not lines:

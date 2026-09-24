@@ -160,12 +160,7 @@ def convert_file(
     content = header + "\n\n".join(body_parts).strip() + "\n"
     content = re.sub(r"\n{4,}", "\n\n\n", content)
 
-    out_path = os.path.join(out_dir, safe_name(stem) + ".md")
-    if not opts.overwrite and os.path.exists(out_path):
-        n = 2
-        while os.path.exists(out_path):
-            out_path = os.path.join(out_dir, f"{safe_name(stem)} ({n}).md")
-            n += 1
+    out_path = _destino(out_dir, stem, pdf_path, opts, result)
     with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(content)
     result.out_path = out_path
@@ -192,6 +187,57 @@ def convert_file(
     say(f"OK  {os.path.basename(pdf_path)} -> {os.path.basename(out_path)} "
         f"({result.pages} pag., {result.page_source})")
     return result
+
+
+def _fonte_da_nota(path: str) -> str:
+    """Le o campo source_path de uma nota ja existente."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for _ in range(20):
+                linha = fh.readline()
+                if not linha:
+                    break
+                if linha.startswith("source_path:"):
+                    return linha.split(":", 1)[1].strip().strip('"').replace("\\\\", "\\")
+    except OSError:
+        return ""
+    return ""
+
+
+def _destino(out_dir: str, stem: str, pdf_path: str, opts: Options,
+             result: DocResult) -> str:
+    """Escolhe o nome do arquivo sem apagar a nota de OUTRO PDF.
+
+    Reconverter o mesmo PDF sobrescreve a nota, como se espera. Mas dois PDFs
+    de mesmo nome em pastas diferentes (comum num acervo) nao podem se apagar
+    em silencio - o segundo ganha um sufixo.
+    """
+    base = safe_name(stem)
+    out_path = os.path.join(out_dir, base + ".md")
+    if not os.path.exists(out_path):
+        return out_path
+
+    fonte = _fonte_da_nota(out_path)
+    mesmo_pdf = os.path.normcase(os.path.abspath(fonte or "")) == \
+        os.path.normcase(os.path.abspath(pdf_path))
+    if mesmo_pdf or (opts.overwrite and not fonte):
+        return out_path
+
+    n = 2
+    while True:
+        alt = os.path.join(out_dir, f"{base} ({n}).md")
+        if not os.path.exists(alt):
+            result.warnings.append(
+                f"Ja existia uma nota chamada '{base}.md' vinda de outro PDF "
+                f"({os.path.basename(fonte) or 'origem desconhecida'}). "
+                f"Esta foi gravada como '{os.path.basename(alt)}' para nao apagar "
+                "a outra."
+            )
+            return alt
+        if os.path.normcase(os.path.abspath(_fonte_da_nota(alt) or "")) == \
+                os.path.normcase(os.path.abspath(pdf_path)):
+            return alt
+        n += 1
 
 
 def _build_header(pdf_path, result: DocResult, labels, opts: Options, title, meta) -> str:
