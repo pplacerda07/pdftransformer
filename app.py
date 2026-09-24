@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from pdf2md.model import Options
+from tooltip import tip
 
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
@@ -62,8 +63,11 @@ PAGE_MODE_CHOICES = [
 ]
 
 
-def _button(parent, text, command, kind="ghost", width=None):
-    """Botao chapado com estado de hover (o ttk nao deixa colorir a vontade)."""
+def _button(parent, text, command, kind="ghost", width=None, ajuda=None):
+    """Botao chapado com estado de hover (o ttk nao deixa colorir a vontade).
+
+    `ajuda` e um par (titulo, explicacao) que vira balao ao parar o mouse.
+    """
     if kind == "primary":
         bg, fg, hover = ACCENT, "#FFFFFF", ACCENT_HOVER
     elif kind == "soft":
@@ -90,18 +94,25 @@ def _button(parent, text, command, kind="ghost", width=None):
     btn.bind("<Enter>", on_enter)
     btn.bind("<Leave>", on_leave)
     btn._base_bg = bg
+    if ajuda:
+        tip(btn, *ajuda)
     return btn
 
 
-def _card(parent, step: str, title: str, hint: str = ""):
+def _card(parent, step: str, title: str, hint: str = "", ajuda=None):
     """Cartao branco com borda fina; devolve (cartao, corpo)."""
     outer = tk.Frame(parent, bg=CARD, highlightbackground=BORDER,
                      highlightcolor=BORDER, highlightthickness=1, bd=0)
     head = tk.Frame(outer, bg=CARD)
     head.pack(fill="x", padx=16, pady=(13, 0))
-    tk.Label(head, text=f" {step} ", font=("Segoe UI Semibold", 9), bg=ACCENT_SOFT,
-             fg=ACCENT, padx=4, pady=2).pack(side="left")
-    tk.Label(head, text=title, font=F_CARD, bg=CARD, fg=TEXT).pack(side="left", padx=(8, 0))
+    badge = tk.Label(head, text=f" {step} ", font=("Segoe UI Semibold", 9),
+                     bg=ACCENT_SOFT, fg=ACCENT, padx=4, pady=2)
+    badge.pack(side="left")
+    rotulo = tk.Label(head, text=title, font=F_CARD, bg=CARD, fg=TEXT)
+    rotulo.pack(side="left", padx=(8, 0))
+    if ajuda:
+        tip(badge, *ajuda)
+        tip(rotulo, *ajuda)
     if hint:
         tk.Label(head, text=hint, font=F_SMALL, bg=CARD, fg=MUTED).pack(side="left", padx=(10, 0))
     body = tk.Frame(outer, bg=CARD)
@@ -179,6 +190,12 @@ class App:
             side="left", pady=(14, 0), anchor="w")
         tk.Label(inner, text=APP_SUB, font=F_BASE, bg=CARD, fg=MUTED).pack(
             side="left", padx=(12, 0), pady=(20, 0), anchor="w")
+        dica = tk.Label(inner, text="?  pare o mouse sobre qualquer item para ver o que faz",
+                        font=F_SMALL, bg=ACCENT_SOFT, fg=ACCENT, padx=10, pady=4)
+        dica.pack(side="right", pady=(18, 0))
+        tip(dica, "Ajuda em qualquer lugar",
+            "Todo botao, caixa e coluna desta tela tem uma explicacao curta como esta. "
+            "Basta parar o mouse em cima e esperar um instante.")
         tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x")
 
         # o rodape e criado antes do corpo para nunca ser empurrado para fora
@@ -188,19 +205,43 @@ class App:
         body.pack(fill="both", expand=True, padx=20, pady=16)
 
         self._build_files(body)
-        self._build_pages(body)
-        self._build_output(body)
+
+        # cartoes 2 e 3 lado a lado: em pe um embaixo do outro nao cabem na tela
+        colunas = tk.Frame(body, bg=BG)
+        colunas.pack(fill="both")
+        esquerda = tk.Frame(colunas, bg=BG)
+        esquerda.pack(side="left", fill="both", expand=True)
+        direita = tk.Frame(colunas, bg=BG)
+        direita.pack(side="left", fill="both", expand=True, padx=(12, 0))
+
+        self._build_pages(esquerda)
+        self._build_output(direita)
+
+        # a janela nunca pode ficar menor do que o conteudo precisa
+        self.root.update_idletasks()
+        alt = self.root.winfo_reqheight()
+        larg = min(max(880, self.root.winfo_reqwidth()), self.root.winfo_screenwidth() - 80)
+        tela_h = self.root.winfo_screenheight() - 90
+        if alt > self.root.winfo_height():
+            nova = min(alt, tela_h)
+            self.root.geometry(f"{self.root.winfo_width()}x{nova}")
+        self.root.minsize(larg, min(alt, tela_h))
 
     # ---------------------------------------------------------------- cartoes --
     def _build_files(self, parent) -> None:
-        card, body = _card(parent, "1", "PDFs a converter",
-                           "arraste arquivos para a lista" if HAS_DND else "")
+        card, body = _card(
+            parent, "1", "PDFs a converter",
+            "arraste arquivos para a lista" if HAS_DND else "",
+            ajuda=("Passo 1: escolher os arquivos",
+                   "Monte aqui a fila de PDFs. Pode ser um arquivo so ou uma pasta "
+                   "inteira com centenas deles - a conversao roda um apos o outro "
+                   "sem voce precisar acompanhar."))
         card.pack(fill="both", expand=True, pady=(0, 12))
 
         wrap = tk.Frame(body, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
         wrap.pack(fill="both", expand=True)
         cols = ("arquivo", "pasta", "status")
-        self.tree = ttk.Treeview(wrap, columns=cols, show="headings", height=6,
+        self.tree = ttk.Treeview(wrap, columns=cols, show="headings", height=5,
                                  style="Files.Treeview", selectmode="extended")
         self.tree.heading("arquivo", text="ARQUIVO", anchor="w")
         self.tree.heading("pasta", text="PASTA", anchor="w")
@@ -213,6 +254,11 @@ class App:
         self.tree.tag_configure("indo", foreground=ACCENT)
         self.tree.tag_configure("espera", foreground=MUTED)
         self.tree.pack(side="left", fill="both", expand=True)
+        tip(self.tree, "Lista de PDFs a converter",
+            "Todos os arquivos daqui serao convertidos quando voce clicar em Converter.\n"
+            "A coluna SITUACAO acompanha cada um: 'na fila', 'convertendo...', "
+            "'N paginas' quando termina, ou 'erro'.\n"
+            "Clique num arquivo para seleciona-lo (e o que o botao Conferir numeracao usa).")
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
         sb.pack(side="right", fill="y")
         self.tree.configure(yscrollcommand=sb.set)
@@ -230,34 +276,68 @@ class App:
 
         bar = tk.Frame(body, bg=CARD)
         bar.pack(fill="x", pady=(10, 0))
-        _button(bar, "Adicionar PDFs", self.add_files, "soft").pack(side="left")
-        _button(bar, "Adicionar pasta", self.add_folder).pack(side="left", padx=6)
-        _button(bar, "Remover", self.remove_selected).pack(side="left")
-        _button(bar, "Limpar", self.clear_files).pack(side="left", padx=6)
+        _button(bar, "Adicionar PDFs", self.add_files, "soft", ajuda=(
+            "Escolher arquivos PDF",
+            "Abre a janela do Windows para voce escolher os PDFs. "
+            "Segure Ctrl para marcar varios de uma vez.")).pack(side="left")
+        _button(bar, "Adicionar pasta", self.add_folder, ajuda=(
+            "Adicionar uma pasta inteira",
+            "Varre a pasta escolhida E todas as subpastas dela, e poe na lista "
+            "todos os PDFs encontrados. E o caminho mais rapido para um acervo "
+            "grande.")).pack(side="left", padx=6)
+        _button(bar, "Remover", self.remove_selected, ajuda=(
+            "Tirar da lista",
+            "Remove da lista os arquivos selecionados. "
+            "Nao apaga nada do seu computador.")).pack(side="left")
+        _button(bar, "Limpar", self.clear_files, ajuda=(
+            "Esvaziar a lista",
+            "Tira todos os arquivos da lista para voce comecar outro lote. "
+            "Nenhum arquivo do computador e apagado.")).pack(side="left", padx=6)
         self.count_lbl = tk.Label(bar, text="nenhum arquivo", font=F_SMALL,
                                   bg=CARD, fg=MUTED)
         self.count_lbl.pack(side="right")
+        tip(self.count_lbl, "Quantos arquivos estao na fila",
+            "Conta os PDFs da lista neste momento.")
 
     def _build_pages(self, parent) -> None:
-        card, body = _card(parent, "2", "Numeracao das paginas",
-                           "e isto que garante a citacao correta")
-        card.pack(fill="x", pady=(0, 12))
+        card, body = _card(
+            parent, "2", "Numeracao das paginas",
+            "e isto que garante a citacao correta",
+            ajuda=("Passo 2: a parte que garante a citacao",
+                   "Aqui voce decide de onde sai o numero de pagina que vai para a "
+                   "nota, e como ele aparece no texto. Se algum dia uma citacao sua "
+                   "sair com a pagina errada, o problema esta neste cartao."))
+        card.pack(fill="both", expand=True)
         body.columnconfigure(1, weight=1)
 
         tk.Label(body, text="Como descobrir a pagina impressa", font=F_SMALL,
                  bg=CARD, fg=MUTED).grid(row=0, column=0, sticky="w")
-        self.page_combo = ttk.Combobox(body, state="readonly", font=F_BASE,
+        self.page_combo = ttk.Combobox(body, state="readonly", font=F_BASE, width=34,
                                        values=[c[0] for c in PAGE_MODE_CHOICES])
         self.page_combo.current(0)
         self.page_combo.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(3, 10))
         self.page_combo.bind("<<ComboboxSelected>>", self._on_mode)
+        tip(self.page_combo, "De onde vem o numero da pagina",
+            "A folha 27 do PDF quase nunca e a pagina 27 do livro. Esta opcao decide "
+            "como descobrir o numero certo.\n\n"
+            "Automatico: tenta primeiro os rotulos que o proprio PDF traz; se nao "
+            "houver, le os numeros impressos no rodape. Deixe assim na maioria dos "
+            "casos.\n"
+            "Deslocamento manual: voce mesmo informa a diferenca, no campo abaixo.\n"
+            "Usar a folha do PDF: ignora a publicacao e numera 1, 2, 3...")
 
         tk.Label(body, text="Marcador que aparece no texto", font=F_SMALL,
                  bg=CARD, fg=MUTED).grid(row=2, column=0, sticky="w")
-        self.marker_combo = ttk.Combobox(body, state="readonly", font=F_BASE,
+        self.marker_combo = ttk.Combobox(body, state="readonly", font=F_BASE, width=34,
                                          values=[c[0] for c in MARKER_CHOICES])
         self.marker_combo.current(0)
         self.marker_combo.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(3, 10))
+        tip(self.marker_combo, "Como a virada de pagina aparece na nota",
+            "Recomendado: escreve as duas formas - um comentario que fica invisivel "
+            "na leitura do Obsidian e um titulo 'p. 23', que aparece no painel de "
+            "navegacao e permite link direto para a pagina.\n\n"
+            "Escolha 'somente comentario' se quiser a nota totalmente limpa, ou "
+            "'sem marcador' se nao precisar citar pagina nesse material.")
 
         off = tk.Frame(body, bg=CARD)
         off.grid(row=4, column=0, columnspan=2, sticky="ew")
@@ -266,32 +346,64 @@ class App:
         self.offset_spin = ttk.Spinbox(off, from_=-999, to=999, width=6, font=F_BASE,
                                        textvariable=self.offset, state="disabled")
         self.offset_spin.pack(side="left", padx=8)
-        tk.Label(off, text="pagina impressa = folha do PDF + deslocamento.   "
-                           "Ex.: a pagina 1 do livro esta na folha 17  ->  -16",
-                 font=F_SMALL, bg=CARD, fg=MUTED).pack(side="left")
-        _button(off, "Conferir numeracao", self.check_numbering, "soft").pack(side="right")
+        ajuda_offset = (
+            "Corrigir a numeracao na mao",
+            "So fica ativo quando voce escolhe 'Deslocamento manual' acima.\n\n"
+            "A conta e: pagina impressa = folha do PDF + deslocamento.\n"
+            "A pagina 1 do livro esta na folha 17 do PDF? Use -16.\n"
+            "O PDF e um capitulo solto que comeca na pagina 145 do original? Use +144.")
+        tip(self.offset_spin, *ajuda_offset)
+        legenda = tk.Label(off, text="pagina impressa = folha + deslocamento",
+                           font=F_SMALL, bg=CARD, fg=MUTED, wraplength=200,
+                           justify="left")
+        legenda.pack(side="left")
+        tip(legenda, *ajuda_offset)
+        _button(off, "Conferir numeracao", self.check_numbering, "soft", ajuda=(
+            "Ver a numeracao antes de converter",
+            "Analisa o PDF selecionado na lista e mostra a tabela "
+            "'folha do PDF -> pagina da publicacao', junto com a origem dessa "
+            "numeracao.\n\n"
+            "Vale o habito: confira aqui sempre que for converter um livro novo "
+            "que voce pretende citar.")).pack(side="right")
 
     def _build_output(self, parent) -> None:
-        card, body = _card(parent, "3", "Saida e limpeza do texto")
-        card.pack(fill="x", pady=(0, 12))
+        card, body = _card(
+            parent, "3", "Saida e limpeza do texto", "",
+            ajuda=("Passo 3: onde salvar e como limpar o texto",
+                   "A primeira parte diz para qual pasta vao as notas. As caixas "
+                   "abaixo controlam o que o programa arruma no texto extraido. "
+                   "Os valores que ja vem marcados servem bem para quase tudo."))
+        card.pack(fill="both", expand=True)
         body.columnconfigure(1, weight=1)
 
         self.same_folder = tk.BooleanVar(value=True)
-        ttk.Checkbutton(body, text="Salvar numa subpasta 'markdown' ao lado de cada PDF",
-                        variable=self.same_folder, command=self._toggle_out).grid(
-            row=0, column=0, columnspan=3, sticky="w")
+        chk_pasta = ttk.Checkbutton(
+            body, text="Salvar numa subpasta 'markdown' ao lado de cada PDF",
+            variable=self.same_folder, command=self._toggle_out)
+        chk_pasta.grid(row=0, column=0, columnspan=3, sticky="w")
+        tip(chk_pasta, "Onde as notas serao gravadas",
+            "Marcado: cada .md vai para uma subpasta 'markdown' criada ao lado do "
+            "proprio PDF. As notas ficam junto das fontes.\n\n"
+            "Desmarcado: voce escolhe uma pasta unica para tudo - por exemplo, a "
+            "pasta do seu vault do Obsidian.")
 
         self.out_var = tk.StringVar()
         self.out_entry = ttk.Entry(body, textvariable=self.out_var, font=F_BASE,
                                    state="disabled")
         self.out_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(7, 12))
-        self.out_btn = _button(body, "Escolher pasta", self.pick_out)
+        tip(self.out_entry, "Pasta de destino",
+            "Caminho da pasta onde todos os .md serao gravados. "
+            "So fica disponivel com a caixa acima desmarcada.")
+        self.out_btn = _button(body, "Escolher pasta", self.pick_out, ajuda=(
+            "Procurar a pasta",
+            "Abre a janela do Windows para voce apontar a pasta de destino - "
+            "por exemplo, a pasta do seu vault do Obsidian."))
         self.out_btn.grid(row=1, column=2, sticky="e", padx=(8, 0), pady=(7, 12))
         self.out_btn.configure(state="disabled")
 
         grid = tk.Frame(body, bg=CARD)
         grid.grid(row=2, column=0, columnspan=3, sticky="ew")
-        for c in range(3):
+        for c in range(2):
             grid.columnconfigure(c, weight=1, uniform="opt")
 
         self.v_frontmatter = tk.BooleanVar(value=True)
@@ -307,21 +419,66 @@ class App:
         self.v_ocr = tk.BooleanVar(value=False)
 
         checks = [
-            ("Cabecalho YAML com a fonte", self.v_frontmatter),
-            ("Nota de contexto para a IA", self.v_legend),
-            ("Detectar titulos", self.v_headings),
-            ("Remover cabecalho/rodape repetido", self.v_running),
-            ("Juntar palavras com hifen", self.v_dehyph),
-            ("Preservar negrito e italico", self.v_emphasis),
-            ("Converter tabelas", self.v_tables),
-            ("Detectar duas colunas", self.v_columns),
-            ("Extrair imagens", self.v_images),
-            ("Tambem uma nota por pagina", self.v_perpage),
-            ("OCR em paginas sem texto", self.v_ocr),
+            ("Cabecalho YAML com a fonte", self.v_frontmatter,
+             "Ficha da fonte no topo da nota",
+             "Escreve um bloco com titulo, autor, arquivo de origem, total de paginas "
+             "e de onde veio a numeracao. O Obsidian le esse bloco como propriedades "
+             "da nota, e e por ele que voce sabe o quanto confiar na numeracao."),
+            ("Nota de contexto para a IA", self.v_legend,
+             "Explicacao para a inteligencia artificial",
+             "Acrescenta um paragrafo dizendo o que os marcadores de pagina "
+             "significam e pedindo que a citacao use o numero do marcador anterior "
+             "ao trecho. E o que faz o Claude citar a pagina certa."),
+            ("Detectar titulos", self.v_headings,
+             "Transformar em titulos",
+             "Linhas escritas em fonte maior que o corpo do texto viram titulos "
+             "(##, ###). Isso da estrutura a nota e alimenta o painel de navegacao "
+             "do Obsidian.\n\nDesmarque se o seu PDF tiver muitos destaques soltos "
+             "virando titulo sem necessidade."),
+            ("Remover cabecalho/rodape repetido", self.v_running,
+             "Tirar o texto que se repete em toda pagina",
+             "O titulo do livro ou do capitulo impresso no alto de cada pagina vira "
+             "lixo quando repetido centenas de vezes.\n\nDesmarque se perceber que "
+             "algum texto util esta sumindo."),
+            ("Juntar palavras com hifen", self.v_dehyph,
+             "Consertar palavras cortadas na quebra de linha",
+             "'pro-' no fim de uma linha e 'cesso' no inicio da seguinte viram "
+             "'processo'. Sem isso a IA le palavras partidas e a busca por termos "
+             "falha."),
+            ("Preservar negrito e italico", self.v_emphasis,
+             "Manter os destaques do original",
+             "O que estava em negrito vira **negrito** e o italico vira *italico* - "
+             "util quando o autor destaca termos-chave ou titulos de obras."),
+            ("Converter tabelas", self.v_tables,
+             "Tabelas viram tabelas de Markdown",
+             "Reconhece tabelas no PDF e escreve em formato de tabela, em vez de "
+             "despejar as celulas soltas.\n\nDesmarque se as tabelas do seu material "
+             "sairem embaralhadas."),
+            ("Detectar duas colunas", self.v_columns,
+             "Ordem de leitura em textos de duas colunas",
+             "Le a coluna da esquerda inteira antes da direita, como em artigos de "
+             "periodico. Sem isso, as frases das duas colunas saem intercaladas e o "
+             "texto fica sem sentido."),
+            ("Extrair imagens", self.v_images,
+             "Salvar tambem as figuras",
+             "Grava as imagens do PDF numa pasta 'assets' e referencia na nota. "
+             "Deixe desmarcado se voce so quer o texto - fica mais leve e mais "
+             "rapido."),
+            ("Tambem uma nota por pagina", self.v_perpage,
+             "Gerar um arquivo separado por pagina",
+             "Alem da nota unica, cria uma pasta com um .md por pagina, cada um com "
+             "links de anterior e proxima.\n\nAtencao: um livro de 300 paginas vira "
+             "300 arquivos no seu vault."),
+            ("OCR em paginas sem texto", self.v_ocr,
+             "Ler paginas escaneadas (imagem)",
+             "Quando a pagina e so imagem, tenta reconhecer as letras.\n\n"
+             "Exige o programa Tesseract instalado a parte. Sem ele, o programa "
+             "avisa e segue sem OCR."),
         ]
-        for i, (label, var) in enumerate(checks):
-            ttk.Checkbutton(grid, text=label, variable=var).grid(
-                row=i // 3, column=i % 3, sticky="w", pady=2)
+        for i, (label, var, t_titulo, t_corpo) in enumerate(checks):
+            chk = ttk.Checkbutton(grid, text=label, variable=var)
+            chk.grid(row=i // 2, column=i % 2, sticky="w", pady=2)
+            tip(chk, t_titulo, t_corpo)
 
     def _build_footer(self) -> None:
         tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x", side="bottom")
@@ -330,7 +487,7 @@ class App:
 
         log_wrap = tk.Frame(foot, bg=CARD)
         log_wrap.pack(fill="x", padx=20, pady=(12, 0))
-        self.log = tk.Text(log_wrap, height=5, wrap="word", font=F_MONO, bd=0,
+        self.log = tk.Text(log_wrap, height=4, wrap="word", font=F_MONO, bd=0,
                            bg="#FAFAFC", fg=TEXT, padx=10, pady=8,
                            highlightbackground=BORDER, highlightthickness=1,
                            state="disabled")
@@ -342,21 +499,42 @@ class App:
         self.log.tag_configure("erro", foreground=ERR_C)
         self.log.tag_configure("aviso", foreground=WARN_C)
         self.log.tag_configure("info", foreground=MUTED)
+        tip(self.log, "Registro do que aconteceu",
+            "Uma linha por arquivo convertido, com o numero de paginas e a origem da "
+            "numeracao usada.\n\n"
+            "Verde: convertido. Laranja: aviso - por exemplo, paginas sem texto "
+            "porque o PDF e escaneado. Vermelho: o arquivo nao pode ser lido.")
 
         self.progress = ttk.Progressbar(foot, style="Accent.Horizontal.TProgressbar")
         self.progress.pack(fill="x", padx=20, pady=(10, 0))
+        tip(self.progress, "Progresso do arquivo atual",
+            "Avanca pagina a pagina dentro do PDF que esta sendo convertido. "
+            "Para acompanhar o lote inteiro, olhe a coluna SITUACAO da lista.")
 
         bar = tk.Frame(foot, bg=CARD)
         bar.pack(fill="x", padx=20, pady=12)
         self.status = tk.Label(bar, text="Pronto para converter.", font=F_BASE,
                                bg=CARD, fg=MUTED, anchor="w")
         self.status.pack(side="left")
-        self.run_btn = _button(bar, "Converter", self.start, "primary")
+        tip(self.status, "Situacao atual",
+            "Mostra qual arquivo esta sendo convertido e, ao final, quantos "
+            "deram certo.")
+        self.run_btn = _button(bar, "Converter", self.start, "primary", ajuda=(
+            "Converter tudo o que esta na lista",
+            "Gera um arquivo .md para cada PDF, com as opcoes escolhidas acima.\n\n"
+            "A conversao roda em segundo plano: voce pode continuar usando o "
+            "computador, e a janela continua respondendo."))
         self.run_btn.pack(side="right")
-        self.cancel_btn = _button(bar, "Cancelar", self.cancel)
+        self.cancel_btn = _button(bar, "Cancelar", self.cancel, ajuda=(
+            "Interromper a conversao",
+            "Para o processo no ponto em que estiver. Os arquivos ja concluidos "
+            "continuam salvos; o que estava no meio e descartado."))
         self.cancel_btn.pack(side="right", padx=8)
         self.cancel_btn.configure(state="disabled")
-        self.open_btn = _button(bar, "Abrir pasta de saida", self.open_out)
+        self.open_btn = _button(bar, "Abrir pasta de saida", self.open_out, ajuda=(
+            "Ver os arquivos gerados",
+            "Abre no Explorador do Windows a pasta onde as notas foram gravadas. "
+            "Fica disponivel assim que o primeiro arquivo termina."))
         self.open_btn.pack(side="right")
         self.open_btn.configure(state="disabled")
 
@@ -508,8 +686,16 @@ class App:
 
         tk.Label(top, text=os.path.basename(path), font=F_CARD, bg=CARD, fg=TEXT,
                  wraplength=390, justify="left").pack(anchor="w", padx=18, pady=(16, 2))
-        tk.Label(top, text=f"Origem: {labels.human}", font=F_SMALL, bg=CARD,
-                 fg=ACCENT, wraplength=390, justify="left").pack(anchor="w", padx=18)
+        origem = tk.Label(top, text=f"Origem: {labels.human}", font=F_SMALL, bg=CARD,
+                          fg=ACCENT, wraplength=390, justify="left")
+        origem.pack(anchor="w", padx=18)
+        tip(origem, "De onde saiu esta numeracao",
+            "Rotulos embutidos no PDF: o proprio arquivo informa - e o mais "
+            "confiavel.\n"
+            "Numeros impressos detectados: lidos do rodape das paginas.\n"
+            "Deslocamento manual: o valor que voce informou.\n"
+            "Numeracao do proprio PDF: nada foi encontrado, esta contando folhas. "
+            "Se o livro tiver capa e prefacio, conserte com o deslocamento.")
         tk.Label(top, text=f"Analisadas {limit} de {total} folhas.", font=F_SMALL,
                  bg=CARD, fg=MUTED).pack(anchor="w", padx=18, pady=(2, 10))
 
@@ -526,6 +712,11 @@ class App:
         for pdf_page, label in rows:
             txt.insert("end", f"{pdf_page:>9}   ->   {label}\n")
         txt.configure(state="disabled")
+        tip(txt, "Como conferir",
+            "Abra o PDF no leitor, va ate uma folha qualquer e compare o numero "
+            "impresso na pagina com o que esta nesta tabela.\n\n"
+            "Se nao bater, feche esta janela, escolha 'Deslocamento manual' e "
+            "informe a diferenca.")
 
         _button(top, "Fechar", top.destroy, "soft").pack(pady=(0, 14))
 
