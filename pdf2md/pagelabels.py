@@ -28,9 +28,14 @@ class PageLabels:
         self.detail = detail
 
     def label(self, index: int) -> str:
-        if 0 <= index < len(self.labels) and self.labels[index]:
+        """Rotulo da pagina impressa, ou "" quando a folha nao tem numeracao."""
+        if 0 <= index < len(self.labels):
             return self.labels[index]
-        return str(index + 1)
+        return ""
+
+    @property
+    def first_real(self) -> str:
+        return next((l for l in self.labels if l), "")
 
     @property
     def human(self) -> str:
@@ -46,6 +51,30 @@ class PageLabels:
         if self.source == "pdf":
             return "numeracao do proprio PDF"
         return self.source
+
+
+def _first_roman(page: PageData) -> str:
+    for rom, _y, _line in page.printed_roman:
+        if roman_to_int(rom):
+            return rom
+    return ""
+
+
+def _offset_labels(pages: list[PageData], off: int) -> list[str]:
+    """Aplica um deslocamento fixo sem inventar pagina 0 ou negativa.
+
+    As folhas que caem antes do inicio da numeracao sao pre-textuais: usam o
+    romano impresso, se houver, e senao ficam sem rotulo - melhor admitir que
+    a folha nao tem numero do que escrever um numero errado numa citacao.
+    """
+    labels: list[str] = []
+    for p in pages:
+        valor = p.index + 1 + off
+        if valor >= 1:
+            labels.append(str(valor))
+        else:
+            labels.append(_first_roman(p))
+    return labels
 
 
 def _embedded(doc) -> list[str] | None:
@@ -211,7 +240,7 @@ def resolve(doc, pages: list[PageData], opts: Options) -> PageLabels:
     if mode == "offset":
         _drop_all_margin_numbers(pages)
         off = opts.manual_offset
-        return PageLabels([str(i + 1 + off) for i in range(n)], "offset", off)
+        return PageLabels(_offset_labels(pages, off), "offset", off)
 
     if mode in ("auto", "embedded"):
         emb = _embedded(doc)
@@ -236,6 +265,6 @@ def resolve(doc, pages: list[PageData], opts: Options) -> PageLabels:
     _drop_all_margin_numbers(pages)
     if opts.manual_offset:
         off = opts.manual_offset
-        return PageLabels([str(i + 1 + off) for i in range(n)], "offset", off)
+        return PageLabels(_offset_labels(pages, off), "offset", off)
 
     return PageLabels([str(i + 1) for i in range(n)], "pdf")

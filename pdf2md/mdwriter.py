@@ -107,7 +107,21 @@ def mark_running_heads(pages: list[PageData]) -> set:
 def page_marker(label: str, pdf_page: int, opts: Options) -> str:
     if opts.marker_style == "none":
         return ""
-    label = label or str(pdf_page)
+    if not label:
+        # folha sem numeracao (capa, rosto, folha de credito): dizer isso e
+        # mais honesto do que passar o numero da folha como se fosse a pagina
+        comment = f"<!-- page: sem-numeracao | pdf: {pdf_page} -->"
+        heading = f"###### folha {pdf_page} (sem numeracao)"
+        inline = f"**[folha {pdf_page}, sem numeracao]**"
+        style = opts.marker_style
+        if style == "comment":
+            return comment
+        if style == "heading":
+            return heading
+        if style == "inline":
+            return inline
+        return comment + "\n" + heading
+
     show_pdf = opts.show_pdf_page and label != str(pdf_page)
     comment = f"<!-- page: {label}" + (f" | pdf: {pdf_page}" if show_pdf else "") + " -->"
     heading = f"###### p. {label}"

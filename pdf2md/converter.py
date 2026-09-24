@@ -209,7 +209,7 @@ def _build_header(pdf_path, result: DocResult, labels, opts: Options, title, met
             f"pdf_pages: {result.pages}",
             f"page_numbering: {_yaml(labels.source)}",
             f"page_numbering_note: {_yaml(labels.human)}",
-            f"first_page_label: {_yaml(labels.label(0))}",
+            f"first_page_label: {_yaml(labels.label(0) or labels.first_real or 'sem numeracao')}",
             f"converted: {today}",
             "tool: pdftransformer",
             "tags:",
@@ -237,11 +237,12 @@ def _write_per_page(pages, stats, opts, out_dir, stem, title, pdf_path) -> str:
     total = len(pages)
     for pd in pages:
         text = render_page(pd, stats, opts)
+        rotulo = f"p. {pd.label}" if pd.label else f"folha {pd.index + 1} (sem numeracao)"
         fm = [
             "---",
-            f"title: {_yaml(f'{title} - p. {pd.label}')}",
+            f"title: {_yaml(title + ' - ' + rotulo)}",
             f"source_file: {_yaml(os.path.basename(pdf_path))}",
-            f"page: {_yaml(pd.label)}",
+            f"page: {_yaml(pd.label or 'sem numeracao')}",
             f"pdf_page: {pd.index + 1}",
             "---",
             "",
@@ -251,7 +252,7 @@ def _write_per_page(pages, stats, opts, out_dir, stem, title, pdf_path) -> str:
             nav.append(f"[[{safe_name(stem)} p{pd.index:04d}|<- anterior]]")
         if pd.index + 1 < total:
             nav.append(f"[[{safe_name(stem)} p{pd.index + 2:04d}|proxima ->]]")
-        body = "\n".join(fm) + f"# p. {pd.label}\n\n" + (text or "*(sem texto)*")
+        body = "\n".join(fm) + f"# {rotulo}\n\n" + (text or "*(sem texto)*")
         if nav:
             body += "\n\n---\n" + " · ".join(nav) + "\n"
         path = os.path.join(folder, f"{safe_name(stem)} p{pd.index + 1:04d}.md")

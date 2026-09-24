@@ -669,7 +669,8 @@ class App:
             limit = min(doc.page_count, 60)
             pages = [extract_page(doc[i], opts) for i in range(limit)]
             labels = resolve_labels(doc, pages, opts)
-            rows = [(i + 1, labels.label(i)) for i in range(min(limit, 40))]
+            rows = [(i + 1, labels.label(i) or "(sem numeracao)")
+                    for i in range(min(limit, 40))]
             total = doc.page_count
             doc.close()
         except Exception as exc:
