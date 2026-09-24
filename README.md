@@ -8,7 +8,7 @@ na hora de citar.
 Feito para montar um vault no Obsidian e dar contexto ao Claude.
 
 **Manual completo, item por item: [MANUAL.md](MANUAL.md).**
-Dentro do programa, pare o mouse sobre qualquer bot„o ou caixa para ver o que ele faz.
+Dentro do programa, pare o mouse sobre qualquer bot√£o ou caixa para ver o que ele faz.
 
 ---
 
