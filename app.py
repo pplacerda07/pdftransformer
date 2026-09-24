@@ -626,11 +626,20 @@ class App:
         self.offset_spin.configure(state="normal" if mode == "offset" else "disabled")
 
     # ----------------------------------------------------------------- opcoes --
+    def _offset_valor(self) -> int:
+        """Le o campo de deslocamento sem quebrar se estiver vazio ou com texto."""
+        try:
+            valor = int(str(self.offset_spin.get()).strip() or 0)
+        except (ValueError, tk.TclError):
+            valor = 0
+            self.offset.set(0)
+        return max(-9999, min(9999, valor))
+
     def options(self) -> Options:
         out_dir = None if self.same_folder.get() else (self.out_var.get().strip() or None)
         return Options(
             page_mode=PAGE_MODE_CHOICES[self.page_combo.current()][1],
-            manual_offset=int(self.offset.get() or 0),
+            manual_offset=self._offset_valor(),
             marker_style=MARKER_CHOICES[self.marker_combo.current()][1],
             frontmatter=self.v_frontmatter.get(),
             marker_legend=self.v_legend.get(),

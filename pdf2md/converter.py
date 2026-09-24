@@ -179,10 +179,13 @@ def convert_file(
             f"(ex.: {', '.join(str(p) for p in result.empty_pages[:6])}"
             f"{'...' if len(result.empty_pages) > 6 else ''}) - PDF escaneado?"
         )
-    if labels.source == "pdf" and labels.detail:
+    if labels.source == "pdf":
+        motivo = labels.detail or ("nao foi possivel descobrir a pagina impressa "
+                                   "deste PDF")
         result.warnings.append(
-            f"Numeracao: {labels.detail}. Usando a pagina do PDF; "
-            "se a publicacao comeca em outra pagina, informe o deslocamento."
+            f"Numeracao: {motivo}. Os marcadores estao usando a FOLHA do PDF, que "
+            "pode nao ser a pagina da publicacao. Confira uma folha no leitor e, se "
+            "nao bater, use 'Deslocamento manual'."
         )
 
     doc.close()
