@@ -37,6 +37,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--por-pagina", action="store_true", help="gera tambem um .md por pagina")
     ap.add_argument("--imagens", action="store_true")
     ap.add_argument("--ocr", action="store_true")
+    ap.add_argument("--indices", action="store_true",
+                    help="atualiza os indices do vault na pasta de saida ao terminar")
     args = ap.parse_args(argv)
 
     files = _collect(args.entrada)
@@ -64,6 +66,20 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             falhas += 1
             print(f"ERRO  {path}: {exc}", file=sys.stderr)
+
+    if args.indices:
+        from .indices import montar
+
+        if not args.saida:
+            print("--indices precisa de --saida (a pasta do vault).", file=sys.stderr)
+            return 1
+        resumo = montar(args.saida)
+        if resumo.get("notas"):
+            print(f"\nindices atualizados: {resumo['notas']} obras em "
+                  f"{resumo['pastas']} pasta(s)")
+            print(f"  numeracao confiavel: {resumo['confiaveis']} | "
+                  f"a conferir: {resumo['conferir']} | "
+                  f"escaneadas: {resumo['escaneadas']}")
     return 1 if falhas else 0
 
 

@@ -417,6 +417,7 @@ class App:
         self.v_images = tk.BooleanVar(value=False)
         self.v_perpage = tk.BooleanVar(value=False)
         self.v_ocr = tk.BooleanVar(value=False)
+        self.v_indices = tk.BooleanVar(value=True)
 
         checks = [
             ("Cabecalho YAML com a fonte", self.v_frontmatter,
@@ -474,6 +475,13 @@ class App:
              "Quando a pagina e so imagem, tenta reconhecer as letras.\n\n"
              "Exige o programa Tesseract instalado a parte. Sem ele, o programa "
              "avisa e segue sem OCR."),
+            ("Atualizar indices do vault", self.v_indices,
+             "Montar os indices no fim da conversao",
+             "Cria um indice por pasta e um geral na raiz da pasta de saida, com "
+             "a lista de obras, o numero de paginas e se a numeracao e confiavel "
+             "ou precisa ser conferida.\n\n"
+             "So funciona com a opcao de pasta unica (a caixa 'Salvar numa "
+             "subpasta markdown' desmarcada)."),
         ]
         for i, (label, var, t_titulo, t_corpo) in enumerate(checks):
             chk = ttk.Checkbutton(grid, text=label, variable=var)
@@ -637,7 +645,7 @@ class App:
 
     def options(self) -> Options:
         out_dir = None if self.same_folder.get() else (self.out_var.get().strip() or None)
-        return Options(
+        opts = Options(
             page_mode=PAGE_MODE_CHOICES[self.page_combo.current()][1],
             manual_offset=self._offset_valor(),
             marker_style=MARKER_CHOICES[self.marker_combo.current()][1],
@@ -654,6 +662,8 @@ class App:
             ocr=self.v_ocr.get(),
             output_dir=out_dir,
         )
+        opts._indices = self.v_indices.get() and out_dir is not None
+        return opts
 
     # ------------------------------------------------------------ conferencia --
     def check_numbering(self) -> None:
@@ -798,6 +808,19 @@ class App:
             except Exception as exc:
                 self.queue.put(("file", (path, "erro", "erro")))
                 self.queue.put(("log", (f"ERRO {os.path.basename(path)}: {exc}", "erro")))
+        if opts.output_dir and getattr(opts, "_indices", False) and ok:
+            try:
+                from pdf2md.indices import montar
+
+                r = montar(opts.output_dir)
+                if r.get("notas"):
+                    self.queue.put(("log", (
+                        f"indices atualizados: {r['notas']} obras, "
+                        f"{r['confiaveis']} com numeracao confiavel, "
+                        f"{r['conferir']} a conferir", "ok")))
+            except Exception as exc:
+                self.queue.put(("log", (f"nao foi possivel montar os indices: {exc}",
+                                        "aviso")))
         self.queue.put(("done", (ok, len(files))))
 
     def _drain(self) -> None:

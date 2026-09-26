@@ -7,8 +7,16 @@ na hora de citar.
 
 Feito para montar um vault no Obsidian e dar contexto ao Claude.
 
+> ### 👉 Primeira vez aqui? Leia **[COMECE AQUI.md](COMECE%20AQUI.md)**
+> Três passos, sem precisar saber programar.
+
 **Manual completo, item por item: [MANUAL.md](MANUAL.md).**
 Dentro do programa, pare o mouse sobre qualquer botão ou caixa para ver o que ele faz.
+
+**Usa Claude Code?** Abra o Claude Code dentro desta pasta e peça em português:
+*"converte os PDFs da minha pasta X para o meu vault"*. O repositório traz um
+[`CLAUDE.md`](CLAUDE.md) e a skill `converter-pdfs`, então ele já sabe operar a
+ferramenta, conferir a numeração de cada obra e montar o índice do vault sozinho.
 
 ---
 
