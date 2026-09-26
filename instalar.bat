@@ -65,7 +65,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================
-echo    Pronto! Abra o programa com:  abrir.bat
+echo    Tudo pronto. Abra o programa com o arquivo  abrir.bat
 echo ============================================
 echo.
 pause
