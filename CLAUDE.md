@@ -27,8 +27,14 @@ resposta:
 O ambiente fica em `.venv` na raiz do projeto. Use sempre o Python de dentro dele:
 
 ```bash
-.venv\Scripts\python.exe -m pdf2md "<pasta ou arquivo>" -o "<pasta do vault>" --indices
+.venv\Scripts\python.exe -m pdf2md "<pasta ou arquivo>"
 ```
+
+**Nao pergunte onde fica o vault na primeira vez.** O programa procura sozinho uma
+pasta de vault na Area de Trabalho (a que tiver um `000 - Acervo.md` dentro, ou cujo
+nome fale em vault), guarda a escolha e passa a usar sempre. Sem `-o`, ele grava no
+vault e ja atualiza o indice. Use `-o "<pasta>"` apenas quando o usuario pedir outro
+destino, e `--definir-vault "<pasta>"` para trocar o padrao.
 
 - aceita arquivos e pastas misturados; pastas são varridas com subpastas;
 - `--indices` monta o índice do vault no fim (só funciona junto com `-o`);
@@ -42,9 +48,8 @@ não estiver instalado na máquina: `winget install -e --id Python.Python.3.12`.
 
 ## Tarefas comuns
 
-**"Converte esses PDFs"** → descubra onde fica o vault do usuário (pergunte uma vez e
-depois guarde na memória do projeto), rode o comando acima com `--indices`, e ao final
-relate: quantas obras, quantas páginas, quantas com numeração confiável e a lista das
+**"Converte esses PDFs"** → rode o comando acima sem `-o`. A primeira linha da saída
+diz em que vault ele gravou; confira se faz sentido e siga. Ao final relate: quantas obras, quantas páginas, quantas com numeração confiável e a lista das
 que precisam ser conferidas.
 
 **"A página está errada nessa obra"** → peça ao usuário o número impresso numa folha

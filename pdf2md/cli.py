@@ -39,7 +39,35 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ocr", action="store_true")
     ap.add_argument("--indices", action="store_true",
                     help="atualiza os indices do vault na pasta de saida ao terminar")
+    ap.add_argument("--definir-vault", metavar="PASTA",
+                    help="guarda esta pasta como o vault padrao e sai")
     args = ap.parse_args(argv)
+
+    from . import config
+
+    if args.definir_vault:
+        if not os.path.isdir(args.definir_vault):
+            print(f"Pasta nao encontrada: {args.definir_vault}", file=sys.stderr)
+            return 1
+        config.definir_vault(args.definir_vault)
+        print(f"vault padrao: {os.path.abspath(args.definir_vault)}")
+        print("a partir de agora, converter sem -o grava direto nele.")
+        return 0
+
+    # sem -o, mas com um vault ja escolhido antes: usa ele e avisa
+    if not args.saida:
+        antes = config.ler().get("vault")
+        guardado = config.vault()          # o de antes, ou um achado na Area de Trabalho
+        if guardado:
+            args.saida = guardado
+            if guardado == antes:
+                print(f"usando o seu vault: {guardado}\n")
+            else:
+                print(f"encontrei o seu vault em: {guardado}")
+                print('(para usar outro, rode com --definir-vault "<pasta>")\n')
+            args.indices = True            # vault sempre sai com o indice em dia
+    else:
+        config.definir_vault(args.saida)
 
     files = _collect(args.entrada)
     if not files:

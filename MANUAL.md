@@ -203,6 +203,12 @@ vault do Obsidian. O campo e o botão *Escolher pasta* só ficam ativos nesse ca
 > e grava ali. Um erro de digitação não dá mensagem de erro: ele produz uma pasta
 > nova num lugar inesperado. Prefira o botão *Escolher pasta*.
 
+**O programa lembra da sua pasta.** Da primeira vez ele procura sozinho um vault na
+Área de Trabalho (a pasta que tiver um `000 - Acervo.md` dentro, ou cujo nome fale em
+vault) e guarda a escolha. Da segunda em diante, a pasta já vem preenchida, e arrastar
+um PDF em cima do `converter.bat` grava direto nela com o índice atualizado. Para
+trocar, basta escolher outra pasta na janela e converter uma vez.
+
 **Quando já existe uma nota com aquele nome:** se ela veio do **mesmo PDF**, é
 substituída — é o que você espera ao reconverter para corrigir a numeração. Se veio
 de **outro PDF** (dois `cap1.pdf` em pastas diferentes, por exemplo), a nova é gravada

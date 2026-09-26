@@ -38,21 +38,35 @@ Uma janela preta vai aparecer e escrever algumas coisas. Quando ela disser
 
 ## Passo 3 — Usar
 
-Você tem dois caminhos. Pode usar os dois.
+Três caminhos. Escolha o que preferir, dá para misturar.
 
-### Caminho A — a janela do programa
+### O jeito mais rápido — arrastar
 
-Dois cliques em **`abrir.bat`**.
+**Arraste o PDF em cima do arquivo `converter.bat`** e solte.
+
+Pronto. Ele converte, salva no seu vault e já atualiza o índice. Não precisa abrir
+nada, escolher pasta nem responder pergunta nenhuma.
+
+> Na primeira vez, o programa procura sozinho o seu vault na Área de Trabalho e mostra
+> na tela qual pasta ele encontrou. A partir daí ele lembra. Se ele achou a pasta
+> errada, é só abrir a janela do programa (`abrir.bat`) e escolher a certa uma vez.
+
+Pode arrastar vários PDFs de uma vez, e também uma pasta inteira.
+
+### A janela do programa
+
+Dois cliques em **`abrir.bat`**. Use quando quiser conferir a numeração antes de
+converter, ou mexer nas opções.
 
 1. Arraste seus PDFs para a lista.
 2. Clique em **Conferir numeração** e veja se a página bate com a do livro.
-3. Desmarque *"Salvar numa subpasta markdown"* e escolha a pasta do seu vault.
+3. A pasta do vault já vem preenchida — confira se está certa.
 4. **Converter**.
 
 Pare o mouse em cima de qualquer botão ou caixa para ver o que ele faz. Tudo na tela
 tem explicação.
 
-### Caminho B — pedindo ao Claude
+### Pedindo ao Claude
 
 Abra o **Claude Code** dentro da pasta `pdftransformer`. Ele já vem com instruções
 prontas aqui dentro, então é só falar normalmente:
@@ -63,8 +77,7 @@ prontas aqui dentro, então é só falar normalmente:
 
 > atualiza o índice do vault
 
-Na primeira vez ele vai perguntar onde fica o seu vault. Depois disso, não pergunta
-mais.
+Ele já sabe onde fica o seu vault e não vai te perguntar.
 
 ---
 

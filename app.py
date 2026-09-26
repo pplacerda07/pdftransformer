@@ -13,6 +13,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from pdf2md import config
 from pdf2md.model import Options
 from tooltip import tip
 
@@ -144,7 +145,49 @@ class App:
 
         self._style()
         self._build()
+        self._recuperar_preferencias()
         self.root.after(120, self._drain)
+
+    # ------------------------------------------------------------ memoria --
+    def _recuperar_preferencias(self) -> None:
+        """Quem usa todo dia nao precisa reescolher o vault toda vez."""
+        guardado = config.ler()
+        vault = config.vault()          # o que foi usado antes, ou um encontrado
+        if vault:
+            self.out_var.set(vault)
+            self.same_folder.set(bool(guardado.get("mesma_pasta", False)))
+            self._toggle_out()
+        for chave, var in self._caixas_salvas().items():
+            if chave in guardado:
+                var.set(bool(guardado[chave]))
+        modo = guardado.get("modo_pagina")
+        if modo:
+            for i, (_rotulo, valor) in enumerate(PAGE_MODE_CHOICES):
+                if valor == modo:
+                    self.page_combo.current(i)
+                    self._on_mode()
+        if guardado.get("deslocamento"):
+            self.offset.set(int(guardado["deslocamento"]))
+
+    def _caixas_salvas(self) -> dict:
+        return {
+            "frontmatter": self.v_frontmatter, "legenda": self.v_legend,
+            "titulos": self.v_headings, "cabecalhos": self.v_running,
+            "hifen": self.v_dehyph, "enfase": self.v_emphasis,
+            "tabelas": self.v_tables, "colunas": self.v_columns,
+            "imagens": self.v_images, "por_pagina": self.v_perpage,
+            "ocr": self.v_ocr, "indices": self.v_indices,
+        }
+
+    def _guardar_preferencias(self) -> None:
+        dados = {chave: bool(var.get()) for chave, var in self._caixas_salvas().items()}
+        dados["mesma_pasta"] = bool(self.same_folder.get())
+        dados["modo_pagina"] = PAGE_MODE_CHOICES[self.page_combo.current()][1]
+        dados["deslocamento"] = self._offset_valor()
+        destino = self.out_var.get().strip()
+        if destino:
+            dados["vault"] = destino
+        config.gravar(dados)
 
     # ------------------------------------------------------------------ tema --
     def _style(self) -> None:
@@ -762,6 +805,7 @@ class App:
                     "  winget install -e --id UB-Mannheim.TesseractOCR\n"
                     "  .venv\\Scripts\\python.exe -m pip install pytesseract pillow")
 
+        self._guardar_preferencias()
         self._cancel.clear()
         self.run_btn.configure(state="disabled", bg="#A9A6DF")
         self.cancel_btn.configure(state="normal")

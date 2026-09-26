@@ -11,8 +11,9 @@ Fluxo completo, do PDF à nota citável. Execute os passos — não os descreva.
 
 - **De onde:** o usuário pode dar uma pasta, arquivos soltos, ou dizer "os PDFs que
   eu baixei". Se ficar ambíguo, pergunte uma vez e siga.
-- **Para onde:** a pasta do vault do Obsidian. Se você ainda não sabe qual é,
-  pergunte **uma única vez** e guarde na memória do projeto para nunca mais perguntar.
+- **Para onde:** não pergunte. O programa acha sozinho o vault na Área de Trabalho e
+  guarda a escolha; a primeira linha da saída diz qual pasta ele usou. Só informe um
+  destino com `-o` se o usuário pedir outro.
 
 Se a pasta de origem tiver subpastas, o programa varre todas. A estrutura de pastas
 **não** é espelhada automaticamente: para espelhar, converta pasta por pasta usando
@@ -21,8 +22,12 @@ Se a pasta de origem tiver subpastas, o programa varre todas. A estrutura de pas
 ## 2. Converta
 
 ```bash
-.venv\Scripts\python.exe -m pdf2md "<origem>" -o "<vault>" --indices
+.venv\Scripts\python.exe -m pdf2md "<origem>"
 ```
+
+Sem `-o`, ele grava no vault do usuário e atualiza o índice automaticamente. Para
+outro destino: `-o "<pasta>" --indices`. Para trocar o vault padrão:
+`--definir-vault "<pasta>"`.
 
 Se o ambiente não existir, rode `instalar.bat` primeiro.
 
@@ -49,7 +54,7 @@ Para resolver uma obra desse segundo grupo:
 3. reconverta só aquela obra:
 
 ```bash
-.venv\Scripts\python.exe -m pdf2md "<arquivo>" -o "<vault>" --modo-pagina offset --offset <valor> --indices
+.venv\Scripts\python.exe -m pdf2md "<arquivo>" --modo-pagina offset --offset <valor>
 ```
 
 ## 4. Relate
