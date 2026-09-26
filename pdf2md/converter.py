@@ -18,10 +18,12 @@ Progress = Callable[[int, int], None]
 Log = Callable[[str], None]
 
 _INVALID = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+# colchete no nome do arquivo quebra o link [[nota]] do Obsidian
+_COLCHETES = str.maketrans({"[": "(", "]": ")"})
 
 
 def safe_name(name: str, limit: int = 120) -> str:
-    name = _INVALID.sub("-", name).strip(" .")
+    name = _INVALID.sub("-", name).translate(_COLCHETES).strip(" .")
     name = re.sub(r"\s+", " ", name)
     return (name[:limit].strip() or "documento")
 
